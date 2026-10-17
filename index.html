@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>أطلس التشريح التمريضي ثلاثي الأبعاد | 3D Nursing Anatomy</title>
+  <style>
+    :root {
+      --bg-dark: #060a12;
+      --panel-bg: rgba(11, 18, 33, 0.90);
+      --panel-border: rgba(56, 189, 248, 0.25);
+      --accent: #0284c7;
+      --accent-glow: #38bdf8;
+      --danger: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 58% 42%, #152542 0%, #060a12 75%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-main);
+      touch-action: none;
+    }
+
+    /* الشريط العلوي */
+    .top-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background: rgba(6, 10, 18, 0.92);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--panel-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 30;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 800;
+      font-size: 14px;
+      color: var(--accent-glow);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-top {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.28);
+      color: var(--text-main);
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: 0.2s;
+    }
+
+    .btn-top:hover, .btn-top.active {
+      background: var(--accent);
+      border-color: var(--accent-glow);
+      color: #fff;
+    }
+
+    /* مساحة العرض ثلاثي الأبعاد */
+    #canvas-container {
+      position: fixed;
+      top: 48px;
+      bottom: 56px;
+      left: 0;
+      right: 0;
+      z-index: 1;
+      touch-action: none;
+      cursor: grab;
+    }
+
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+
+    /* القائمة الجانبية على الشمال (Left Sidebar) */
+    .left-sidebar {
+      position: fixed;
+      top: 56px;
+      left: 10px;
+      bottom: 64px;
+      width: 225px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+      transition: transform 0.28s ease, opacity 0.28s ease;
+    }
+
+    .left-sidebar.collapsed {
+      transform: translateX(-245px);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .sidebar-header {
+      padding: 9px 12px;
+      background: rgba(15, 23, 42, 0.95);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-glow);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* أزرار إظهار وإخفاء الطبقات */
+    .layer-toggles {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      padding: 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 23, 42, 0.55);
+    }
+
+    .layer-btn {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: #e2e8f0;
+      font-size: 11px;
+      padding: 5px 4px;
+      border-radius: 7px;
+      cursor: pointer;
+      text-align: center;
+      transition: 0.15s;
+    }
+
+    .layer-btn.active {
+      background: rgba(2, 132, 199, 0.35);
+      border-color: var(--accent-glow);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .layer-btn.hidden-layer {
+      opacity: 0.4;
+      border-color: transparent;
+      text-decoration: line-through;
+    }
+
+    /* صندوق البحث */
+    .search-box {
+      padding: 6px 8px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .search-box input {
+      width: 100%;
+      background: rgba(6, 10, 18, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 7px;
+      padding: 6px 8px;
+      color: #fff;
+      font-size: 11.5px;
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent-glow);
+    }
+
+    /* قائمة الأعضاء على الشمال */
+    .items-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      touch-action: pan-y;
+    }
+
+    .cat-title {
+      font-size: 10.5px;
+      color: #38bdf8;
+      padding: 6px 4px 2px;
+      font-weight: 700;
+    }
+
+    .part-item {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      padding: 7px 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: 0.15s;
+      text-align: right;
+    }
+
+    .part-item:hover, .part-item.selected {
+      background: rgba(2, 132, 199, 0.32);
+      border-color: var(--accent-glow);
+    }
+
+    .part-item-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #f8fafc;
+      display: block;
+    }
+
+    .part-item-en {
+      font-size: 10px;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    .part-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    /* زر فتح القائمة عند إغلاقها */
+    .toggle-left-btn {
+      position: fixed;
+      top: 58px;
+      left: 10px;
+      z-index: 25;
+      background: var(--accent);
+      color: #fff;
+      border: 1px solid var(--accent-glow);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(2, 132, 199, 0.45);
+      display: none;
+    }
+
+    .left-sidebar.collapsed ~ .toggle-left-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* شارة الاسم الفورية في الأعلى عند لمس أي عضو */
+    .instant-badge {
+      position: fixed;
+      top: 56px;
+      right: 12px;
+      z-index: 22;
+      background: rgba(11, 18, 33, 0.94);
+      border: 1px solid var(--accent-glow);
+      border-radius: 12px;
+      padding: 8px 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      max-width: calc(100vw - 250px);
+    }
+
+    .instant-badge .hint-label {
+      font-size: 10px;
+      color: var(--accent-glow);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .instant-badge .title-ar {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .instant-badge .title-sub {
+      font-size: 11px;
+      color: #cbd5e1;
+      margin-top: 1px;
+    }
+
+    /* بطاقة الشرح التمريضي المبسطة */
+    .info-card {
+      position: fixed;
+      bottom: 64px;
+      right: 12px;
+      width: 350px;
+      max-width: calc(100vw - 24px);
+      max-height: 44vh;
+      background: var(--panel-bg);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      z-index: 24;
+      overflow-y: auto;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      touch-action: pan-y;
+    }
+
+    .info-card.minimized {
+      max-height: 44px;
+      overflow: hidden;
+    }
+
+    .info-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .info-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-btn {
+      background: rgba(56, 189, 248, 0.16);
+      border: 1px solid rgba(56, 189, 248, 0.38);
+      color: #fff;
+      border-radius: 7px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .info-section {
+      margin-bottom: 8px;
+      font-size: 12px;
+      line-height: 1.55;
+      color: #e2e8f0;
+    }
+
+    .info-section strong {
+      color: var(--accent-glow);
+      display: block;
+      margin-bottom: 2px;
+      font-size: 11.5px;
+    }
+
+    .red-flag-box {
+      background: rgba(239, 68, 68, 0.15);
+      border-right: 3px solid var(--danger);
+      padding: 6px 9px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      color: #fecaca;
+      margin-top: 6px;
+    }
+
+    /* شريط الاختبار السريع */
+    .quiz-banner {
+      position: fixed;
+      top: 56px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, #1e1b4b, #0f172a);
+      border: 1px solid #818cf8;
+      padding: 8px 14px;
+      border-radius: 12px;
+      z-index: 28;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+      font-size: 12px;
+      width: max-content;
+      max-width: 92vw;
+    }
+
+    /* شريط الإعلانات السفلي للربح */
+    .ad-banner-slot {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: #04070e;
+      border-top: 1px solid rgba(148, 163, 184, 0.2);
+      z-index: 35;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+    }
+
+    .ad-placeholder {
+      width: 100%;
+      max-width: 728px;
+      height: 44px;
+      border: 1px dashed rgba(56, 189, 248, 0.35);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.65);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .ad-tag {
+      background: rgba(245, 158, 11, 0.22);
+      color: #fbbf24;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-left: 6px;
+    }
+
+    /* توافق كامل مع شاشة الموبايل */
+    @media (max-width: 700px) {
+      .left-sidebar {
+        width: 180px;
+      }
+      .instant-badge {
+        max-width: calc(100vw - 205px);
+        padding: 6px 10px;
+      }
+      .instant-badge .title-ar {
+        font-size: 13px;
+      }
+      .info-card {
+        width: calc(100vw - 20px);
+        right: 10px;
+        max-height: 35vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- الشريط العلوي -->
+  <header class="top-header">
+    <div class="brand">
+      <span>🩺</span>
+      <span>أطلس التمريض 3D</span>
+    </div>
+    <div class="top-actions">
+      <button class="btn-top" onclick="toggleSidebar()">📋 القائمة</button>
+      <button class="btn-top" id="btnAutoRotate" onclick="toggleAutoRotate()">🔄 دوران</button>
+      <button class="btn-top" onclick="resetCamera()">🎯 توسيط</button>
+      <button class="btn-top" id="btnQuiz" onclick="toggleQuiz()">🧠 اختبر نفسك</button>
+    </div>
+  </header>
+
+  <!-- نافذة السؤال في وضع الاختبار -->
+  <div class="quiz-banner" id="quizBanner">
+    <span id="quizQuestion">اضغط على: القلب</span>
+    <button class="icon-btn" onclick="nextQuizQuestion()">سؤال آخر ⏭️</button>
+    <button class="icon-btn" onclick="toggleQuiz()">إغلاق ✖</button>
+  </div>
+
+  <!-- القائمة الجانبية على اليسار (الأغراض والطبقات) -->
+  <aside class="left-sidebar" id="leftSidebar">
+    <div class="sidebar-header">
+      <span>أجزاء الجسم (اضغط للعرض)</span>
+      <button class="icon-btn" onclick="toggleSidebar()">◀</button>
+    </div>
+
+    <div class="layer-toggles">
+      <button class="layer-btn active" id="layer-organs" onclick="toggleLayer('organs')">🫀 الأعضاء</button>
+      <button class="layer-btn active" id="layer-skeletal" onclick="toggleLayer('skeletal')">🦴 العظام</button>
+      <button class="layer-btn active" id="layer-muscular" onclick="toggleLayer('muscular')">💪 العضلات</button>
+      <button class="layer-btn active" id="layer-vessels" onclick="toggleLayer('vessels')">🩸 العروق والأعصاب</button>
+    </div>
+
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="🔍 ابحث عن عضو أو وريد..." oninput="filterList()" />
+    </div>
+
+    <div class="items-list" id="itemsList"></div>
+  </aside>
+
+  <!-- زر إظهار القائمة اليسرى عند إخفائها -->
+  <button class="toggle-left-btn" onclick="toggleSidebar()">
+    <span>▶</span>
+    <span>قائمة الأعضاء</span>
+  </button>
+
+  <!-- شارة الاسم الفورية عند لمس أي غرض في المجسم -->
+  <div class="instant-badge" id="instantBadge">
+    <span class="hint-label">👆 المس أي غرض في المجسم لمعرفة اسمه:</span>
+    <div class="title-ar" id="badgeAr">القلب (موقع النبض القمي)</div>
+    <div class="title-sub" id="badgeSub">Heart (Apical Pulse) | Cœur</div>
+  </div>
+
+  <!-- حاوية المجسم ثلاثي الأبعاد -->
+  <div id="canvas-container"></div>
+
+  <!-- بطاقة الشرح التمريضي -->
+  <section class="info-card" id="infoCard">
+    <div class="info-header">
+      <div>
+        <strong id="cardTitle" style="font-size:14px; color:#38bdf8;">القلب (Heart)</strong>
+        <div id="cardFr" style="font-size:11px; color:#94a3b8;">المصطلح الفرنسي: Cœur</div>
+      </div>
+      <div class="info-actions">
+        <button class="icon-btn" onclick="speakCurrentPart()">🔊 نطق</button>
+        <button class="icon-btn" id="btnMinCard" onclick="toggleMinimizeCard()">🔽 تصغير</button>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <strong>📌 الوظيفة والموقع التشريحي:</strong>
+      <span id="cardDesc">عضلة مضخة الدم الرئيسية، يقع في منتصف الصدر مائلاً لليسار بين الرئتين خلف عظم القص.</span>
+    </div>
+
+    <div class="info-section">
+      <strong>💉 التطبيق العملي لطلاب التمريض:</strong>
+      <span id="cardNursing">يُفحص النبض القمي (Apical Pulse) بوضع السماعة في الورب الخامس الأيسر على خط منتصف الترقوة (5th ICS MCL) لمدة دقيقة كاملة.</span>
+    </div>
+
+    <div class="red-flag-box" id="cardAlert">
+      ⚠️ <strong>تنبيه تمريضي مهم:</strong> يجب قياس النبض القمي قبل إعطاء دواء الديجوكسين (Digoxin)، ويُوقف الدواء إذا كان النبض أقل من 60 نبضة/دقيقة.
+    </div>
+  </section>
+
+  <!-- شريط الإعلانات السفلي المخصص للربح (A-ADS) -->
+  <footer class="ad-banner-slot">
+    <div class="ad-placeholder" id="adContainer">
+      <!-- الصق كود إعلان A-ADS هنا مكان هذا النص إذا حصلت عليه -->
+      <span><span class="ad-tag">إعلان</span> مساحة إعلانية جاهزة للربح (A-ADS Banner Slot)</span>
+      <span style="color:#38bdf8; font-weight:600;">Ad Ready</span>
+    </div>
+  </footer>
+
+  <!-- مكتبات Three.js للعرض ثلاثي الأبعاد -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+    // =========================================================================
+    // 1. قاعدة البيانات التشريحية والتمريضية الكاملة
+    // =========================================================================
+    const ANATOMY_PARTS = [
+      {
+        id: 'brain',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'الدماغ (المخ والمخيخ)',
+        nameEn: 'Brain (Cerebrum & Cerebellum)',
+        nameFr: 'Cerveau',
+        color: '#f4afab',
+        cameraTarget: [0, 6.2, 0],
+        cameraPos: [0, 6.4, 4.2],
+        desc: 'مركز التحكم بالجهاز العصبي والوعي والحركة والتنفس، ينقسم إلى نصفي كرة مخية ومخيخ وجذع الدماغ.',
+        nursing: 'يُقيّم الممرض وظيفة الدماغ عبر مقياس غلاسكو للغيبوبة (GCS 3-15) وفحص تفاعل حدقة العين للضوء (PERRLA).',
+        alert: 'أي تغير مفاجئ في مستوى الوعي أو عدم تساوي الحدقتين يدل على ارتفاع الضغط داخل الجمجمة (ICP) ويستدعي تدخلاً طارئاً.'
+      },
+      {
+        id: 'trachea',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'القصبة الهوائية (الرغامى)',
+        nameEn: 'Trachea (Airway)',
+        nameFr: 'Trachée',
+        color: '#7dd3fc',
+        cameraTarget: [0, 4.1, 0.2],
+        cameraPos: [0, 4.3, 3.8],
+        desc: 'ممر هوائي غضروفي حلقي يمتد من الحنجرة ويتفرع إلى القصبتين الهوائيتين اليمنى واليسرى.',
+        nursing: 'أساسية في تأمين مجرى الهواء (Airway Management)، التنبيب الرغامي (Intubation)، وتشفيط المفرزات (Suctioning).',
+        alert: 'لا تتجاوز مدة التشفيط الرغامي 10 إلى 15 ثانية في المرة الواحدة مع إعطاء أكسجين 100% قبل وبعد التشفيط.'
+      },
+      {
+        id: 'heart',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'القلب (النبض القمي)',
+        nameEn: 'Heart (Apical Pulse)',
+        nameFr: 'Cœur',
+        color: '#dc2626',
+        cameraTarget: [0.25, 2.55, 0.55],
+        cameraPos: [0.3, 2.7, 4.1],
+        desc: 'المضخة العضلية للدورة الدموية، يتكون من 4 حجرات (أذينين وبطينين) وتغذيه الشرايين التاجية.',
+        nursing: 'موضع تسمّع الصمام التاجي والنبض القمي (Apical Pulse) يقع في المسافة الوربية الخامسة (5th ICS) على خط منتصف الترقوة الأيسر.',
+        alert: 'افحص النبض القمي لمدة دقيقة كاملة قبل إعطاء دواء الديجوكسين (Digoxin)؛ أوقف الجرعة إذا كان أقل من 60 نبضة/دقيقة.'
+      },
+      {
+        id: 'lungs',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'الرئتان (اليمنى واليسرى)',
+        nameEn: 'Lungs (Right & Left)',
+        nameFr: 'Poumons',
+        color: '#fda4af',
+        cameraTarget: [0, 2.75, 0.2],
+        cameraPos: [0, 2.9, 5.0],
+        desc: 'عضوا التنفس وتبادل الغازات؛ الرئة اليمنى تتكون من 3 فصوص بينما اليسرى تتكون من فصين لوجود القلب.',
+        nursing: 'تسمّع أصوات الرئة بالسماعة بالطريقة المتعرجة (Zigzag) للمقارنة بين الجهتين، ومراقبة تشبع الأكسجين (SpO2 طبيعي 95%-100%).',
+        alert: 'عند مريض الداء الرئوي الانسدادي المزمن (COPD) يُعطى الأكسجين بتركيز منخفض (1-2 لتر/دقيقة) لتجنب تثبيط مركز التنفس.'
+      },
+      {
+        id: 'liver',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'الكبد والمرارة',
+        nameEn: 'Liver & Gallbladder',
+        nameFr: 'Foie et Vésicule biliaire',
+        color: '#881337',
+        cameraTarget: [-0.45, 1.35, 0.45],
+        cameraPos: [-0.4, 1.5, 4.3],
+        desc: 'أكبر عضو داخلي، يقع في الربع العلوي الأيمن للبطن (RUQ) تحت الحجاب الحاجز، مسؤول عن الاستقلاب وتصنيع عوامل التخثر.',
+        nursing: 'مراقبة تحاليل وظائف الكبد (AST, ALT, Bilirubin, Albumin) وفحص السيولة (PT/INR) قبل أي خزعة أو إجراء جراحي.',
+        alert: 'الحذر من إعطاء الباراسيتامول (Paracetamol) بجرعات عالية لمرضى الكبد، ومراقبة علامات اليرقان (Jaundice).'
+      },
+      {
+        id: 'stomach',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'المعدة (موضع أنبوب NG)',
+        nameEn: 'Stomach (NG Tube Site)',
+        nameFr: 'Estomac',
+        color: '#f43f5e',
+        cameraTarget: [0.5, 1.3, 0.4],
+        cameraPos: [0.5, 1.5, 4.2],
+        desc: 'عضو عضلي مجوف على شكل حرف J يقع في الربع العلوي الأيسر للبطن (LUQ) لهضم الطعام.',
+        nursing: 'لتركيب أنبوب التغذية الأنفي المعدي (NG Tube)، يُقاس الطول بطريقة NEX (من الأنف -> شحمة الأذن -> الناتئ الخنجري لعظم القص).',
+        alert: 'تأكد من وجود الأنبوب داخل المعدة عبر فحص حموضة السائل المسحوب (pH ≤ 5) أو الأشعة السينية، وارفع رأس السرير 30-45 درجة أثناء التغذية.'
+      },
+      {
+        id: 'kidneys',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'الكليتان والحالبان',
+        nameEn: 'Kidneys & Ureters',
+        nameFr: 'Reins et Uretères',
+        color: '#9f1239',
+        cameraTarget: [0, 0.9, -0.25],
+        cameraPos: [0, 1.1, 4.6],
+        desc: 'عضوان على شكل حبة الفاصولياء يقعان خلف الصفاق، يقومان بفلترة الدم وتكوين البول وتنظيم ضغط الدم والشوارد.',
+        nursing: 'متابعة جدول السوائل الداخلة والخارجة (Intake & Output) ومراقبة فحص الكرياتينين (Creatinine) والبوتاسيوم (K+).',
+        alert: 'الحد الأدنى الطبيعي لإدرار البول هو 30 مل/ساعة؛ إذا قل عن ذلك يجب إبلاغ الطبيب فوراً لاحتمال حدوث قصور كلوي حاد.'
+      },
+      {
+        id: 'intestines',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'الأمعاء الدقيقة والقولون',
+        nameEn: 'Small & Large Intestines',
+        nameFr: 'Intestin grêle et Côlon',
+        color: '#fb7185',
+        cameraTarget: [0, 0.1, 0.4],
+        cameraPos: [0, 0.3, 4.8],
+        desc: 'الأمعاء الدقيقة في الوسط لامتصاص الغذاء، ويحيط بها القولون (الصاعد، المستعرض، النازل، السيني) لامتصاص الماء.',
+        nursing: 'ترتيب فحص البطن التمريضي: (1. التأمل، 2. التسمّع، 3. القرع، 4. الجس)، ويبدأ التسمّع دائماً من الربع السفلي الأيمن (RLQ).',
+        alert: 'لا تقم بجس البطن قبل التسمّع بالسماعة لأن الضغط باليد يغير حركية وأصوات الأمعاء الحقيقية.'
+      },
+      {
+        id: 'bladder',
+        category: 'organs',
+        catLabel: '🫀 الأعضاء الحيوية',
+        nameAr: 'المثانة البولية (موضع القسطرة)',
+        nameEn: 'Urinary Bladder (Foley Site)',
+        nameFr: 'Vessie urinaire',
+        color: '#f59e0b',
+        cameraTarget: [0, -0.85, 0.5],
+        cameraPos: [0, -0.6, 3.9],
+        desc: 'كيس عضلي مرن يجمع البول في أسفل الحوض خلف ارتفاق العانة.',
+        nursing: 'تركيب القسطرة البولية (Foley Catheter) يتطلب تقنية تعقيم صارمة (Sterile Technique) لمنع عدوى المسالك البولية (CAUTI).',
+        alert: 'ثبّت كيس جمع البول دائماً بمستوى أخفض من مستوى المثانة ولا تضعه على الأرض أبداً لمنع ارتجاع البول.'
+      },
+      {
+        id: 'cephalic_vein',
+        category: 'vessels',
+        catLabel: '🩸 العروق والأعصاب (سحب الدم والحقن)',
+        nameAr: 'الوريد الرأسي (للكانيولا IV)',
+        nameEn: 'Cephalic Vein (IV Cannulation)',
+        nameFr: 'Veine céphalique',
+        color: '#0284c7',
+        cameraTarget: [2.15, 1.0, 0.3],
+        cameraPos: [2.25, 1.1, 3.5],
+        desc: 'وريد سطحي واضح يمتد على الجانب الوحشي (الخارجي باتجاه الإبهام) للساعد والعضد.',
+        nursing: 'الخيار الأول والمفضل لتركيب الكانيولا الوريدية (IV Cannula) وإعطاء الأمصال لأنه مستقيم ومدعوم فوق عظم الكعبرة.',
+        alert: 'ادخل بإبرة الكانيولا بزاوية 15 إلى 30 درجة؛ وبعد رؤية راجع الدم (Flashback) اخفض الزاوية وادفع القسطرة البلاستيكية فقط.'
+      },
+      {
+        id: 'median_cubital',
+        category: 'vessels',
+        catLabel: '🩸 العروق والأعصاب (سحب الدم والحقن)',
+        nameAr: 'الوريد المرفقي الأوسط (سحب الدم)',
+        nameEn: 'Median Cubital Vein (Venipuncture)',
+        nameFr: 'Veine médiane cubitale',
+        color: '#38bdf8',
+        cameraTarget: [1.9, 1.6, 0.35],
+        cameraPos: [1.95, 1.7, 3.4],
+        desc: 'وصلة وريدية تربط بين الوريد الرأسي والوريد الباسلي في حفرة المرفق الأمامية (Antecubital Fossa).',
+        nursing: 'أفضل وريد لسحب عينات الدم المخبرية (Phlebotomy) لأنه كبير وسطحي وثابت.',
+        alert: 'لا تترك التورنيكيه (الضاغطة المطاطية) مربوطة لأكثر من دقيقة واحدة حتى لا يحدث انحلال للدم وارتفاع كاذب بالبوتاسيوم.'
+      },
+      {
+        id: 'basilic_vein',
+        category: 'vessels',
+        catLabel: '🩸 العروق والأعصاب (سحب الدم والحقن)',
+        nameAr: 'الوريد الباسلي',
+        nameEn: 'Basilic Vein (PICC Line)',
+        nameFr: 'Veine basilique',
+        color: '#2563eb',
+        cameraTarget: [-1.75, 1.4, 0.25],
+        cameraPos: [-1.85, 1.5, 3.5],
+        desc: 'يمتد على الجانب الأنسي (الداخلي باتجاه الخنصر) للساعد والعضد.',
+        nursing: 'يُستخدم كثيراً لتركيب القسطرة المركزية الطرفية (PICC Line)، لكنه يميل للتدحرج أثناء الوخز العادي.',
+        alert: 'احذر عند الوخز العميق فيه لأنه يمر بالقرب من الشريان العضدي والعصب المتوسط.'
+      },
+      {
+        id: 'aorta_vena',
+        category: 'vessels',
+        catLabel: '🩸 العروق والأعصاب (سحب الدم والحقن)',
+        nameAr: 'قوس الأبهر والوريد الأجوف',
+        nameEn: 'Aortic Arch & Vena Cava',
+        nameFr: 'Aorte et Veine cave',
+        color: '#ef4444',
+        cameraTarget: [0, 3.1, 0.3],
+        cameraPos: [0, 3.2, 4.2],
+        desc: 'الأبهر (الأحمر) هو أكبر شريان يضخ الدم المؤكسج من البطين الأيسر للجسم، والوريد الأجوف (الأزرق) يعيد الدم للأذين الأيمن.',
+        nursing: 'موضع طرف القسطرة الوريدية المركزية (CVC) وقياس الضغط الوريدي المركزي (CVP الطبيعي 2-8 mmHg).',
+        alert: 'عند سحب القسطرة المركزية (CVC Removal) اطلب من المريض حبس نفسه (مناورة فالسالفا) لمنع دخول صمة هوائية.'
+      },
+      {
+        id: 'sciatic_nerve',
+        category: 'vessels',
+        catLabel: '🩸 العروق والأعصاب (سحب الدم والحقن)',
+        nameAr: 'العصب الوركي (منطقة خطر الحقن!)',
+        nameEn: 'Sciatic Nerve (Danger Zone)',
+        nameFr: 'Nerf sciatique',
+        color: '#facc15',
+        cameraTarget: [-0.68, -1.7, -0.25],
+        cameraPos: [-0.75, -1.5, -4.2],
+        desc: 'أكبر وأغلظ عصب في جسم الإنسان، يخرج من الضفيرة العجزية ويمر في منتصف الإلية وخلف الفخذ.',
+        nursing: 'يجب تحديد مساره لتجنبه تماماً أثناء إعطاء الحقن العضلي في الإلية (الأفضل استخدام العضلة الإليوية البطنية Ventrogluteal أو الربع العلوي الخارجي).',
+        alert: 'إصابة العصب الوركي بإبرة الحقن تسبب ألماً عصبياً حاداً وشللاً أو هبوطاً في القدم (Foot Drop).'
+      },
+      {
+        id: 'deltoid',
+        category: 'muscular',
+        catLabel: '💪 العضلات ومواقع الحقن العضلي',
+        nameAr: 'العضلة الدالية (حقن الكتف IM)',
+        nameEn: 'Deltoid Muscle (IM Injection)',
+        nameFr: 'Muscle deltoïde',
+        color: '#b91c1c',
+        cameraTarget: [1.55, 3.45, 0.1],
+        cameraPos: [2.15, 3.6, 3.4],
+        desc: 'عضلة الكتف المثلثة السميكة التي تغطي مفصل الكتف من الأعلى والجانب.',
+        nursing: 'موقع إعطاء اللقاحات والحقن العضلي صغير الحجم: حدد الناتئ الأخرمي (Acromion) وانزل بعرض 2 إلى 3 أصابع وادخل بزاوية 90 درجة.',
+        alert: 'الحد الأقصى لحجم الدواء المحقون في العضلة الدالية للبالغين هو 1 مل (أو 2 مل كحد أقصى) لتجنب تلف الأنسجة.'
+      },
+      {
+        id: 'vastus_lateralis',
+        category: 'muscular',
+        catLabel: '💪 العضلات ومواقع الحقن العضلي',
+        nameAr: 'العضلة المتسعة الوحشية (حقن الفخذ IM)',
+        nameEn: 'Vastus Lateralis (Thigh IM Site)',
+        nameFr: 'Muscle vaste latéral',
+        color: '#dc2626',
+        cameraTarget: [0.95, -2.3, 0.3],
+        cameraPos: [1.35, -2.1, 4.0],
+        desc: 'عضلة قوية تقع على الجانب الخارجي الأمامي للفخذ، وهي جزء من العضلة رباعية الرؤوس.',
+        nursing: 'الموقع الأكثر أماناً للحقن العضلي (IM) عند الرضع والأطفال حديثي الولادة (لإعطاء فيتامين K واللقاحات) وفي البالغين أيضاً.',
+        alert: 'احقن دائماً في الثلث الأوسط الخارجي للفخذ بزاوية 90 درجة لخلو هذه المنطقة من الأوعية والأعصاب الرئيسية.'
+      },
+      {
+        id: 'pectoralis_abs',
+        category: 'muscular',
+        catLabel: '💪 العضلات ومواقع الحقن العضلي',
+        nameAr: 'عضلات الصدر والبطن (مواقع تحت الجلد SC)',
+        nameEn: 'Pectoralis & Rectus Abdominis (SC Sites)',
+        nameFr: 'Muscles pectoraux et abdominaux',
+        color: '#991b1b',
+        cameraTarget: [0, 1.5, 0.65],
+        cameraPos: [0, 1.7, 4.8],
+        desc: 'تشكل الجدار العضلي الأمامي للصدر والبطن وتحمي الأعضاء الحشوية.',
+        nursing: 'النسيج الدهني فوق عضلات البطن (مع الابتعاد 5 سم حول السرة) هو أفضل موقع لحقن الإنسولين والهيبارين تحت الجلد (Subcutaneous).',
+        alert: 'قم بتدوير مواقع حقن الإنسولين لمنع التضخم الدهني، ولا تقم بتدليك موقع حقن الهيبارين أو الكليكسان لمنع الكدمات.'
+      },
+      {
+        id: 'skull',
+        category: 'skeletal',
+        catLabel: '🦴 الهيكل العظمي والمعالم',
+        nameAr: 'الجمجمة والفك السفلي',
+        nameEn: 'Skull & Mandible',
+        nameFr: 'Crâne et Mandibule',
+        color: '#e2e8f0',
+        cameraTarget: [0, 5.9, 0],
+        cameraPos: [0, 6.1, 4.2],
+        desc: 'تتكون من عظام القحف الصلبة لحماية الدماغ وعظام الوجه والفك السفلي المفصلي.',
+        nursing: 'تُستخدم مناورة دفع الفك السفلي للأمام (Jaw Thrust) لفتح مجرى الهواء عند مريض الرضوض مع تثبيت فقرات الرقبة.',
+        alert: 'يُمنع تماماً إدخال أنبوب أنفي معدي (NG Tube) عبر الأنف عند الاشتباه بكسر قاعدة الجمجمة، بل يُدخل عن طريق الفم (Orogastric).'
+      },
+      {
+        id: 'sternum_ribs',
+        category: 'skeletal',
+        catLabel: '🦴 الهيكل العظمي والمعالم',
+        nameAr: 'عظم القص والقفص الصدري (موضع CPR)',
+        nameEn: 'Sternum & Ribcage (CPR Landmark)',
+        nameFr: 'Sternum et Cage thoracique',
+        color: '#f1f5f9',
+        cameraTarget: [0, 2.8, 0.6],
+        cameraPos: [0, 3.0, 4.8],
+        desc: '12 زوجاً من الأضلاع المقوسة تتصل بعظم القص من الأمام وبالعمود الفقري من الخلف لحماية القلب والرئتين.',
+        nursing: 'النصف السفلي من عظم القص هو موضع ضغطات الصدر في الإنعاش القلبي الرئوي (CPR) بعمق 5 إلى 6 سم وبمعدل 100-120 ضغطة/دقيقة.',
+        alert: 'تجنب وضع اليد فوق الناتئ الخنجري (Xiphoid Process) في أسفل القص أثناء الـ CPR لمنع كسره وتمزق الكبد.'
+      },
+      {
+        id: 'spine_pelvis',
+        category: 'skeletal',
+        catLabel: '🦴 الهيكل العظمي والمعالم',
+        nameAr: 'العمود الفقري والحوض (البزل القطني)',
+        nameEn: 'Spine & Pelvis (Lumbar Puncture)',
+        nameFr: 'Colonne vertébrale et Bassin',
+        color: '#cbd5e1',
+        cameraTarget: [0, -0.3, -0.2],
+        cameraPos: [0, 0.2, 5.2],
+        desc: 'يتكون من 33 فقرة تحمي النخاع الشوكي، ويتصل بعظام الحوض (الحرقفة والورك والعانة).',
+        nursing: 'قمة العرف الحرقفي (Iliac Crest) تحدد مستوى الفقرات القطنية (L3-L4 / L4-L5) لإجراء البزل القطني (Lumbar Puncture) بوضعية الجنين.',
+        alert: 'بعد البزل القطني يجب أن يستلقي المريض بوضعية مسطحة (Supine) مع الإكثار من السوائل لمنع الصداع التالي للبزل.'
+      }
+    ];
+
+    // =========================================================================
+    // 2. تهيئة محرك العرض ثلاثي الأبعاد السلس للهاتف والكمبيوتر
+    // =========================================================================
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.1, 100);
+    camera.position.set(0, 1.5, 11.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.target.set(0, 1.2, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
+    controls.minDistance = 2.3;
+    controls.maxDistance = 16;
+    controls.maxPolarAngle = Math.PI * 0.92;
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
+
+    // إضاءة طبية واقعية تبرز الأنسجة والعظام
+    scene.add(new THREE.AmbientLight(0xdbeafe, 0.65));
+
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    mainLight.position.set(6, 10, 8);
+    scene.add(mainLight);
+
+    const fillLight = new THREE.DirectionalLight(0x38bdf8, 0.42);
+    fillLight.position.set(-7, 4, -5);
+    scene.add(fillLight);
+
+    const backLight = new THREE.PointLight(0xf43f5e, 0.35, 22);
+    backLight.position.set(0, 3, -6);
+    scene.add(backLight);
+
+    // مجموعات الطبقات الأربع
+    const layerGroups = {
+      organs: new THREE.Group(),
+      skeletal: new THREE.Group(),
+      muscular: new THREE.Group(),
+      vessels: new THREE.Group()
+    };
+    const rootModel = new THREE.Group();
+    Object.values(layerGroups).forEach(g => rootModel.add(g));
+    scene.add(rootModel);
+
+    const clickableMeshes = [];
+    function registerMesh(mesh, partId, layerName) {
+      mesh.userData.partId = partId;
+      clickableMeshes.push(mesh);
+      layerGroups[layerName].add(mesh);
+    }
+
+    // توليد خامات عضوية وعظمية واقعية (Medical PBR Shaders)
+    function makeBoneMat(opacity = 1.0) {
+      return new THREE.MeshPhysicalMaterial({
+        color: 0xe8dfd1,
+        roughness: 0.42,
+        metalness: 0.04,
+        clearcoat: 0.15,
+        transparent: opacity < 1.0,
+        opacity: opacity
+      });
+    }
+
+    function makeOrganMat(hex, rough = 0.25) {
+      return new THREE.MeshPhysicalMaterial({
+        color: hex,
+        roughness: rough,
+        metalness: 0.05,
+        clearcoat: 0.65,
+        clearcoatRoughness: 0.2
+      });
+    }
+
+    function makeMuscleMat(hex = 0x991b1b, opacity = 0.85) {
+      return new THREE.MeshPhysicalMaterial({
+        color: hex,
+        roughness: 0.45,
+        metalness: 0.06,
+        clearcoat: 0.3,
+        transparent: true,
+        opacity: opacity
+      });
+    }
+
+    // دالة رسم الأنابيب التشريحية المنحنية (للشرايين والأوردة والأمعاء والأضلاع)
+    function createCurvedTube(pointsArray, radius, material, partId, layerName, segments = 36) {
+      const vectors = pointsArray.map(p => new THREE.Vector3(p[0], p[1], p[2]));
+      const curve = new THREE.CatmullRomCurve3(vectors);
+      const geo = new THREE.TubeGeometry(curve, segments, radius, 14, false);
+      const mesh = new THREE.Mesh(geo, material);
+      registerMesh(mesh, partId, layerName);
+      return mesh;
+    }
+
+    // =========================================================================
+    // 3. بناء المجسم التشريحي الواقعي المتكامل
+    // =========================================================================
+    let heartGroup, leftLungGroup, rightLungGroup;
+
+    function buildAnatomicalBody() {
+      // 1) الدماغ (نصفا الكرة المخية بتلافيف واقعية + المخيخ)
+      const brainMat = makeOrganMat(0xf4afab, 0.32);
+      [-0.27, 0.27].forEach(x => {
+        const hemi = new THREE.Mesh(new THREE.SphereGeometry(0.5, 28, 28), brainMat.clone());
+        hemi.scale.set(0.86, 0.96, 1.18);
+        hemi.position.set(x, 6.26, 0);
+        registerMesh(hemi, 'brain', 'organs');
+      });
+      const cerebellum = new THREE.Mesh(new THREE.SphereGeometry(0.32, 20, 20), makeOrganMat(0xe5989b, 0.35));
+      cerebellum.scale.set(1.3, 0.7, 0.8);
+      cerebellum.position.set(0, 5.78, -0.32);
+      registerMesh(cerebellum, 'brain', 'organs');
+
+      // 2) الجمجمة والفك السفلي (شبه شفافة لرؤية الدماغ بداخلها)
+      const cranium = new THREE.Mesh(new THREE.SphereGeometry(0.74, 28, 28), makeBoneMat(0.82));
+      cranium.scale.set(0.92, 1.08, 1.06);
+      cranium.position.set(0, 6.2, -0.02);
+      registerMesh(cranium, 'skull', 'skeletal');
+
+      const faceMask = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.39, 0.72, 22), makeBoneMat(0.92));
+      faceMask.position.set(0, 5.42, 0.14);
+      registerMesh(faceMask, 'skull', 'skeletal');
+
+      // 3) العمود الفقري والحوض وعظام الأطراف
+      for (let i = 0; i < 23; i++) {
+        const y = 5.05 - i * 0.255;
+        const zCurve = Math.sin((i / 22) * Math.PI * 2) * 0.08 - 0.35;
+        const vert = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.25, 0.19, 18), makeBoneMat());
+        vert.position.set(0, y, zCurve);
+        registerMesh(vert, 'spine_pelvis', 'skeletal');
+      }
+
+      // الحوض التشريحي (Pelvic Girdle)
+      [-0.62, 0.62].forEach(x => {
+        const ilium = new THREE.Mesh(new THREE.TorusGeometry(0.54, 0.18, 16, 28, Math.PI * 1.25), makeBoneMat());
+        ilium.position.set(x, -0.65, -0.08);
+        ilium.rotation.set(0.35, x > 0 ? -0.42 : 0.42, 0);
+        registerMesh(ilium, 'spine_pelvis', 'skeletal');
+      });
+
+      // عظام الترقوة، العضد، الكعبرة والزند، وعظم الفخذ
+      [-1, 1].forEach(side => {
+        createCurvedTube([
+          [side * 0.15, 3.88, 0.55],
+          [side * 0.75, 3.92, 0.35],
+          [side * 1.42, 3.78, 0.08]
+        ], 0.075, makeBoneMat(), 'sternum_ribs', 'skeletal', 18);
+
+        // عظم العضد (Humerus) مع رأس المفصل
+        const humHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 18, 18), makeBoneMat());
+        humHead.position.set(side * 1.48, 3.55, 0);
+        registerMesh(humHead, 'sternum_ribs', 'skeletal');
+
+        const hum = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 2.05, 18), makeBoneMat());
+        hum.position.set(side * 1.65, 2.6, 0.02);
+        hum.rotation.z = side * 0.11;
+        registerMesh(hum, 'sternum_ribs', 'skeletal');
+
+        // عظام الساعد (Radius & Ulna)
+        const radiusBone = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 1.95, 14), makeBoneMat());
+        radiusBone.position.set(side * 2.12, 0.72, 0.16);
+        radiusBone.rotation.z = side * 0.17;
+        registerMesh(radiusBone, 'sternum_ribs', 'skeletal');
+
+        const ulnaBone = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.065, 1.95, 14), makeBoneMat());
+        ulnaBone.position.set(side * 1.96, 0.7, 0.12);
+        ulnaBone.rotation.z = side * 0.17;
+        registerMesh(ulnaBone, 'sternum_ribs', 'skeletal');
+
+        // عظم الفخذ (Femur)
+        const femurHead = new THREE.Mesh(new THREE.SphereGeometry(0.24, 18, 18), makeBoneMat());
+        femurHead.position.set(side * 0.75, -0.95, 0);
+        registerMesh(femurHead, 'spine_pelvis', 'skeletal');
+
+        const femur = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.15, 2.85, 18), makeBoneMat());
+        femur.position.set(side * 0.78, -2.35, 0.02);
+        registerMesh(femur, 'spine_pelvis', 'skeletal');
+      });
+
+      // 4) عظم القص والقفص الصدري المقوس الواقعي
+      const manubrium = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.2, 0.45, 16), makeBoneMat());
+      manubrium.scale.set(1, 1, 0.4);
+      manubrium.position.set(0, 3.55, 0.68);
+      registerMesh(manubrium, 'sternum_ribs', 'skeletal');
+
+      const sternumBody = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.14, 1.25, 16), makeBoneMat());
+      sternumBody.scale.set(1, 1, 0.4);
+      sternumBody.position.set(0, 2.75, 0.72);
+      registerMesh(sternumBody, 'sternum_ribs', 'skeletal');
+
+      for (let r = 0; r < 10; r++) {
+        const y = 3.62 - r * 0.23;
+        const w = 0.85 + Math.sin((r / 9) * Math.PI) * 0.42;
+        [-1, 1].forEach(side => {
+          createCurvedTube([
+            [0, y + 0.05, -0.32],
+            [side * w, y, -0.05],
+            [side * (w * 0.78), y - 0.06, 0.55],
+            [r < 7 ? side * 0.16 : side * 0.45, y - 0.04, 0.7]
+          ], 0.052, makeBoneMat(), 'sternum_ribs', 'skeletal', 24);
+        });
+      }
+
+      // 5) القصبة الهوائية والشعب الهوائية (Trachea & Bronchi)
+      const tracheaMat = makeOrganMat(0x7dd3fc, 0.28);
+      const trachea = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.3, 20), tracheaMat);
+      trachea.position.set(0, 4.18, 0.12);
+      registerMesh(trachea, 'trachea', 'organs');
+
+      [-1, 1].forEach(side => {
+        createCurvedTube([
+          [0, 3.55, 0.12],
+          [side * 0.45, 3.25, 0.12]
+        ], 0.11, tracheaMat.clone(), 'trachea', 'organs', 14);
+      });
+
+      // 6) القلب التشريحي النابض (أذينان وبطينان وتاجي)
+      heartGroup = new THREE.Group();
+      heartGroup.position.set(0.24, 2.55, 0.36);
+
+      const heartVentricle = new THREE.Mesh(new THREE.SphereGeometry(0.42, 28, 28), makeOrganMat(0xdc2626, 0.18));
+      heartVentricle.scale.set(0.95, 1.28, 0.92);
+      heartVentricle.rotation.z = 0.48;
+      registerMesh(heartVentricle, 'heart', 'organs');
+      heartGroup.add(heartVentricle);
+
+      const rightAtrium = new THREE.Mesh(new THREE.SphereGeometry(0.24, 20, 20), makeOrganMat(0xb91c1c, 0.22));
+      rightAtrium.position.set(-0.22, 0.25, 0.05);
+      registerMesh(rightAtrium, 'heart', 'organs');
+      heartGroup.add(rightAtrium);
+
+      layerGroups.organs.add(heartGroup);
+
+      // 7) الرئتان بفصوصها التشريحية (3 فصوص يمنى وفصان يسرى)
+      rightLungGroup = new THREE.Group();
+      leftLungGroup = new THREE.Group();
+      const lungMat = makeOrganMat(0xfda4af, 0.35);
+
+      // فصوص الرئة اليمنى
+      [[ -0.62, 3.2, 0.12, 0.46, 0.55 ], [ -0.68, 2.75, 0.16, 0.52, 0.55 ], [ -0.66, 2.28, 0.1, 0.54, 0.52 ]].forEach(cfg => {
+        const lobe = new THREE.Mesh(new THREE.SphereGeometry(cfg[3], 24, 24), lungMat.clone());
+        lobe.scale.set(0.95, cfg[4] * 2.0, 0.95);
+        lobe.position.set(cfg[0], cfg[1], cfg[2]);
+        registerMesh(lobe, 'lungs', 'organs');
+        rightLungGroup.add(lobe);
+      });
+
+      // فصوص الرئة اليسرى
+      [[ 0.66, 3.12, 0.12, 0.48, 0.62 ], [ 0.70, 2.42, 0.1, 0.52, 0.62 ]].forEach(cfg => {
+        const lobe = new THREE.Mesh(new THREE.SphereGeometry(cfg[3], 24, 24), lungMat.clone());
+        lobe.scale.set(0.92, cfg[4] * 2.0, 0.95);
+        lobe.position.set(cfg[0], cfg[1], cfg[2]);
+        registerMesh(lobe, 'lungs', 'organs');
+        leftLungGroup.add(lobe);
+      });
+
+      layerGroups.organs.add(rightLungGroup);
+      layerGroups.organs.add(leftLungGroup);
+
+      // 8) الكبد بفصيه الأيمن والأيسر + المرارة الخضراء
+      const liverMat = makeOrganMat(0x7f1d1d, 0.22);
+      const liverRight = new THREE.Mesh(new THREE.SphereGeometry(0.58, 26, 26), liverMat);
+      liverRight.scale.set(1.15, 0.72, 0.85);
+      liverRight.position.set(-0.48, 1.48, 0.28);
+      liverRight.rotation.z = 0.2;
+      registerMesh(liverRight, 'liver', 'organs');
+
+      const liverLeft = new THREE.Mesh(new THREE.SphereGeometry(0.42, 22, 22), liverMat.clone());
+      liverLeft.scale.set(1.1, 0.55, 0.75);
+      liverLeft.position.set(0.05, 1.56, 0.32);
+      registerMesh(liverLeft, 'liver', 'organs');
+
+      const gallbladder = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16), makeOrganMat(0x15803d, 0.25));
+      gallbladder.scale.set(0.8, 1.4, 0.8);
+      gallbladder.position.set(-0.35, 1.12, 0.42);
+      registerMesh(gallbladder, 'liver', 'organs');
+
+      // 9) المعدة المنحنية على شكل حرف J
+      createCurvedTube([
+        [0.12, 1.75, 0.18],
+        [0.58, 1.52, 0.25],
+        [0.52, 1.08, 0.32],
+        [0.15, 1.05, 0.28]
+      ], 0.25, makeOrganMat(0xf43f5e, 0.26), 'stomach', 'organs', 28);
+
+      // 10) الكليتان والحالبان
+      const kidneyMat = makeOrganMat(0x9f1239, 0.28);
+      [-0.48, 0.48].forEach(x => {
+        const kidney = new THREE.Mesh(new THREE.SphereGeometry(0.27, 22, 22), kidneyMat.clone());
+        kidney.scale.set(0.75, 1.28, 0.65);
+        kidney.position.set(x, 0.92, -0.14);
+        registerMesh(kidney, 'kidneys', 'organs');
+
+        createCurvedTube([
+          [x * 0.85, 0.85, -0.12],
+          [x * 0.65, 0.1, -0.05],
+          [x * 0.35, -0.75, 0.28]
+        ], 0.032, makeOrganMat(0xfda4af, 0.3), 'kidneys', 'organs', 18);
+      });
+
+      // 11) القولون (الصاعد والمستعرض والنازل) والأمعاء الدقيقة الملتفة
+      createCurvedTube([
+        [-0.62, -0.45, 0.22],
+        [-0.65, 0.65, 0.25],
+        [0, 0.72, 0.35],
+        [0.65, 0.62, 0.25],
+        [0.62, -0.48, 0.22],
+        [0, -0.65, 0.15]
+      ], 0.18, makeOrganMat(0xe11d48, 0.32), 'intestines', 'organs', 42);
+
+      createCurvedTube([
+        [-0.35, 0.38, 0.32],
+        [0.35, 0.28, 0.38],
+        [-0.38, 0.08, 0.36],
+        [0.36, -0.12, 0.38],
+        [-0.32, -0.32, 0.35],
+        [0.25, -0.42, 0.32]
+      ], 0.125, makeOrganMat(0xfb7185, 0.3), 'intestines', 'organs', 48);
+
+      // 12) المثانة البولية
+      const bladder = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 24), makeOrganMat(0xf59e0b, 0.25));
+      bladder.scale.set(1.0, 0.88, 0.92);
+      bladder.position.set(0, -0.82, 0.36);
+      registerMesh(bladder, 'bladder', 'organs');
+
+      // 13) الشرايين والأوردة والأعصاب السريرية المنحنية
+      // قوس الأبهر والشريان الأبهر النازل
+      createCurvedTube([
+        [0.18, 2.85, 0.32],
+        [0.05, 3.42, 0.22],
+        [-0.08, 3.15, -0.05],
+        [0.06, 1.5, -0.08],
+        [0.04, -0.2, -0.08]
+      ], 0.115, makeOrganMat(0xef4444, 0.22), 'aorta_vena', 'vessels', 32);
+
+      // الوريد الأجوف العلوي والسفلي
+      createCurvedTube([
+        [-0.18, 3.9, 0.12],
+        [-0.16, 2.6, 0.15],
+        [-0.15, 0.9, -0.04],
+        [-0.12, -0.2, -0.05]
+      ], 0.12, makeOrganMat(0x1d4ed8, 0.22), 'aorta_vena', 'vessels', 28);
+
+      // أوردة الذراع لتركيب الكانيولا وسحب الدم
+      [-1, 1].forEach(side => {
+        // الوريد الرأسي (Cephalic Vein)
+        createCurvedTube([
+          [side * 1.55, 3.25, 0.18],
+          [side * 1.85, 2.15, 0.22],
+          [side * 2.12, 1.15, 0.26],
+          [side * 2.32, 0.05, 0.28]
+        ], 0.046, makeOrganMat(0x0284c7, 0.2), 'cephalic_vein', 'vessels', 24);
+
+        // الوريد الباسلي (Basilic Vein)
+        createCurvedTube([
+          [side * 1.45, 2.95, 0.14],
+          [side * 1.68, 1.95, 0.18],
+          [side * 1.92, 0.95, 0.22],
+          [side * 2.08, 0.05, 0.24]
+        ], 0.046, makeOrganMat(0x2563eb, 0.2), 'basilic_vein', 'vessels', 24);
+
+        // الوريد المرفقي الأوسط (Median Cubital Vein)
+        createCurvedTube([
+          [side * 1.72, 1.58, 0.24],
+          [side * 1.98, 1.78, 0.28]
+        ], 0.052, makeOrganMat(0x38bdf8, 0.18), 'median_cubital', 'vessels', 12);
+
+        // العصب الوركي الأصفر (Sciatic Nerve)
+        createCurvedTube([
+          [side * 0.28, -0.55, -0.22],
+          [side * 0.68, -1.25, -0.25],
+          [side * 0.74, -2.45, -0.18],
+          [side * 0.76, -3.65, -0.15]
+        ], 0.058, makeOrganMat(0xfacc15, 0.2), 'sciatic_nerve', 'vessels', 24);
+      });
+
+      // 14) العضلات ومواقع الحقن العضلي وتحت الجلد
+      [-1, 1].forEach(side => {
+        // العضلة الدالية (Deltoid)
+        const delt = new THREE.Mesh(new THREE.SphereGeometry(0.39, 24, 24), makeMuscleMat(0xb91c1c, 0.88));
+        delt.scale.set(0.85, 1.38, 0.95);
+        delt.position.set(side * 1.56, 3.48, 0.05);
+        registerMesh(delt, 'deltoid', 'muscular');
+
+        // العضلة المتسعة الوحشية في الفخذ (Vastus Lateralis)
+        const vastus = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.21, 2.45, 22), makeMuscleMat(0xdc2626, 0.88));
+        vastus.position.set(side * 0.96, -2.3, 0.14);
+        registerMesh(vastus, 'vastus_lateralis', 'muscular');
+      });
+
+      // عضلات الصدر والبطن (Pectoralis & Rectus Abdominis)
+      [-0.45, 0.45].forEach(x => {
+        const pec = new THREE.Mesh(new THREE.SphereGeometry(0.48, 20, 20), makeMuscleMat(0x991b1b, 0.78));
+        pec.scale.set(1.1, 0.85, 0.32);
+        pec.position.set(x, 3.18, 0.76);
+        registerMesh(pec, 'pectoralis_abs', 'muscular');
+      });
+
+      for (let row = 0; row < 3; row++) {
+        [-0.22, 0.22].forEach(x => {
+          const abSeg = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.42, 0.14), makeMuscleMat(0x991b1b, 0.78));
+          abSeg.position.set(x, 1.48 - row * 0.48, 0.74);
+          registerMesh(abSeg, 'pectoralis_abs', 'muscular');
+        });
+      }
+    }
+
+    buildAnatomicalBody();
+
+    // =========================================================================
+    // 4. القائمة اليسرى ونظام اللمس المباشر لمعرفة الاسم (Tap-to-Identify)
+    // =========================================================================
+    let selectedPartId = 'heart';
+    let targetCamPos = null;
+    let targetLookAt = null;
+    let autoRotate = false;
+    let quizActive = false;
+    let currentQuizTarget = null;
+
+    function renderLeftList(filterText = '') {
+      const listEl = document.getElementById('itemsList');
+      listEl.innerHTML = '';
+      const q = filterText.trim().toLowerCase();
+
+      const categories = ['organs', 'vessels', 'muscular', 'skeletal'];
+      categories.forEach(cat => {
+        const items = ANATOMY_PARTS.filter(p =>
+          p.category === cat &&
+          (!q || p.nameAr.toLowerCase().includes(q) || p.nameEn.toLowerCase().includes(q) || p.nameFr.toLowerCase().includes(q))
+        );
+        if (items.length === 0) return;
+
+        const title = document.createElement('div');
+        title.className = 'cat-title';
+        title.textContent = items[0].catLabel;
+        listEl.appendChild(title);
+
+        items.forEach(part => {
+          const btn = document.createElement('div');
+          btn.className = 'part-item' + (part.id === selectedPartId ? ' selected' : '');
+          btn.id = 'item-' + part.id;
+          btn.onclick = () => selectPart(part.id, true);
+          btn.innerHTML = `
+            <div>
+              <span class="part-item-name">${part.nameAr}</span>
+              <span class="part-item-en">${part.nameEn}</span>
+            </div>
+            <span class="part-dot" style="background:${part.color}; color:${part.color}"></span>
+          `;
+          listEl.appendChild(btn);
+        });
+      });
+    }
+
+    function filterList() {
+      renderLeftList(document.getElementById('searchInput').value);
+    }
+
+    function selectPart(partId, moveCamera = true) {
+      const part = ANATOMY_PARTS.find(p => p.id === partId);
+      if (!part) return;
+
+      if (quizActive && currentQuizTarget) {
+        if (partId === currentQuizTarget.id) {
+          document.getElementById('quizQuestion').innerHTML = `✅ إجابة صحيحة! هذا هو <strong>${part.nameAr}</strong>`;
+          setTimeout(nextQuizQuestion, 1400);
+        } else {
+          document.getElementById('quizQuestion').innerHTML = `❌ أنت ضغطت على (${part.nameAr})، ابحث عن: <strong>${currentQuizTarget.nameAr}</strong>`;
+        }
+      }
+
+      selectedPartId = partId;
+
+      // إضاءة الجزء المختار في المجسم ثلاثي الأبعاد
+      clickableMeshes.forEach(m => {
+        if (m.material && m.material.emissive) {
+          const isMatch = m.userData.partId === partId;
+          m.material.emissive.setHex(isMatch ? 0x0ea5e9 : 0x000000);
+          m.material.emissiveIntensity = isMatch ? 0.55 : 0;
+        }
+      });
+
+      // تحديث التحديد في القائمة اليسرى
+      document.querySelectorAll('.part-item').forEach(el => el.classList.remove('selected'));
+      const activeItem = document.getElementById('item-' + partId);
+      if (activeItem) {
+        activeItem.classList.add('selected');
+        activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      // تحديث شارة الاسم الفورية وبطاقة الشرح
+      document.getElementById('badgeAr').textContent = part.nameAr;
+      document.getElementById('badgeSub').textContent = `${part.nameEn} | ${part.nameFr}`;
+
+      document.getElementById('cardTitle').textContent = `${part.nameAr} (${part.nameEn})`;
+      document.getElementById('cardFr').textContent = `المصطلح الفرنسي: ${part.nameFr}`;
+      document.getElementById('cardDesc').textContent = part.desc;
+      document.getElementById('cardNursing').textContent = part.nursing;
+      document.getElementById('cardAlert').innerHTML = `⚠️ <strong>تنبيه تمريضي مهم:</strong> ${part.alert}`;
+
+      if (moveCamera && part.cameraPos && part.cameraTarget) {
+        targetCamPos = new THREE.Vector3(...part.cameraPos);
+        targetLookAt = new THREE.Vector3(...part.cameraTarget);
+      }
+    }
+
+    // التقاط الضغط باللمس أو الماوس بدقة عالية
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let pointerDownPos = { x: 0, y: 0 };
+    let pointerDownTime = 0;
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+      pointerDownTime = performance.now();
+      targetCamPos = null;
+      targetLookAt = null;
+    });
+
+    renderer.domElement.addEventListener('pointerup', (e) => {
+      const dist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+      const elapsed = performance.now() - pointerDownTime;
+
+      if (dist < 12 && elapsed < 400) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(pointer, camera);
+        const visibleMeshes = clickableMeshes.filter(m => m.parent && m.parent.visible && m.visible);
+        const intersects = raycaster.intersectObjects(visibleMeshes, false);
+
+        if (intersects.length > 0) {
+          const hitMesh = intersects[0].object;
+          if (hitMesh.userData.partId) {
+            selectPart(hitMesh.userData.partId, false);
+          }
+        }
+      }
+    });
+
+    // =========================================================================
+    // 5. أزرار التحكم (الطبقات، الصوت، الاختبار، الكاميرا)
+    // =========================================================================
+    function toggleLayer(layerName) {
+      const group = layerGroups[layerName];
+      const btn = document.getElementById('layer-' + layerName);
+      group.visible = !group.visible;
+      btn.classList.toggle('active', group.visible);
+      btn.classList.toggle('hidden-layer', !group.visible);
+    }
+
+    function toggleSidebar() {
+      document.getElementById('leftSidebar').classList.toggle('collapsed');
+    }
+
+    function toggleMinimizeCard() {
+      const card = document.getElementById('infoCard');
+      const btn = document.getElementById('btnMinCard');
+      card.classList.toggle('minimized');
+      btn.textContent = card.classList.contains('minimized') ? '🔼 تكبير' : '🔽 تصغير';
+    }
+
+    function toggleAutoRotate() {
+      autoRotate = !autoRotate;
+      controls.autoRotate = autoRotate;
+      controls.autoRotateSpeed = 1.6;
+      document.getElementById('btnAutoRotate').classList.toggle('active', autoRotate);
+    }
+
+    function resetCamera() {
+      targetCamPos = new THREE.Vector3(0, 1.5, 11.5);
+      targetLookAt = new THREE.Vector3(0, 1.2, 0);
+    }
+
+    function speakCurrentPart() {
+      const part = ANATOMY_PARTS.find(p => p.id === selectedPartId);
+      if (!part || !('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(part.nameEn);
+      utter.lang = 'en-US';
+      utter.rate = 0.9;
+      window.speechSynthesis.speak(utter);
+    }
+
+    function toggleQuiz() {
+      quizActive = !quizActive;
+      const banner = document.getElementById('quizBanner');
+      document.getElementById('btnQuiz').classList.toggle('active', quizActive);
+      if (quizActive) {
+        banner.style.display = 'flex';
+        nextQuizQuestion();
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    function nextQuizQuestion() {
+      const randomIndex = Math.floor(Math.random() * ANATOMY_PARTS.length);
+      currentQuizTarget = ANATOMY_PARTS[randomIndex];
+      document.getElementById('quizQuestion').innerHTML = `🎯 اضغط على المجسم لتحديد: <strong>${currentQuizTarget.nameAr} (${currentQuizTarget.nameEn})</strong>`;
+    }
+
+    // =========================================================================
+    // 6. التحريك الفسيولوجي (نبض القلب + تنفس الرئتين + الكاميرا)
+    // =========================================================================
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+
+      if (heartGroup) {
+        const beat = 1 + Math.pow(Math.sin(t * 3.8), 6) * 0.08;
+        heartGroup.scale.set(beat, beat, beat);
+      }
+
+      if (rightLungGroup && leftLungGroup) {
+        const breath = 1 + Math.sin(t * 1.6) * 0.032;
+        rightLungGroup.scale.set(breath, 1, breath);
+        leftLungGroup.scale.set(breath, 1, breath);
+      }
+
+      if (targetCamPos && targetLookAt) {
+        camera.position.lerp(targetCamPos, 0.08);
+        controls.target.lerp(targetLookAt, 0.08);
+        if (camera.position.distanceTo(targetCamPos) < 0.05) {
+          targetCamPos = null;
+          targetLookAt = null;
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(container.clientWidth, container.clientHeight);
+    });
+
+    renderLeftList();
+    selectPart('heart', false);
+    animate();
+  </script>
+</body>
+</html>
